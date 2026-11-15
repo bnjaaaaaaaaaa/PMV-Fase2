@@ -20,6 +20,17 @@ def get_engine():
 
 engine = get_engine()
 
+def get_enum_values(table, column, fallback):
+    try:
+        res = pd.read_sql(text(f"SHOW COLUMNS FROM {table} LIKE '{column}'"), engine)
+        type_str = str(res.iloc[0]["Type"])
+        if type_str.lower().startswith("enum("):
+            vals = type_str[5:-1].split(",")
+            return [v.strip().strip("'") for v in vals]
+    except Exception:
+        pass
+    return fallback
+
 # --- 1. CONTROL DE USUARIOS Y ROLES ---
 st.sidebar.title("🌊 Sistema Marino")
 if "usuario_activo" not in st.session_state:
@@ -201,6 +212,7 @@ elif modulo == "⚙️ Gestión CRUD":
     entidad = st.selectbox("Seleccionar Tabla Maestra", ["Centros de Conservación", "Especies Marinas"])
 
     if entidad == "Centros de Conservación":
+        estados_centro = get_enum_values("centros_conservacion", "estado_conservacion", ["Óptimo", "Estable", "En Riesgo", "Crítico"])
         df_centros = pd.read_sql(text("""
             SELECT codigo_centro, nombre, region_ubicacion, estado_conservacion, capacidad_operativa, presupuesto, activo
             FROM centros_conservacion ORDER BY codigo_centro DESC
@@ -219,7 +231,7 @@ elif modulo == "⚙️ Gestión CRUD":
                     sup_c = st.number_input("Superficie Protegida (ha)", min_value=10.0, value=1500.0)
                     pres_c = st.number_input("Presupuesto Anual", min_value=0.0, value=25000000.0)
                     cap_c = st.number_input("Capacidad Operativa", min_value=1, value=100)
-                    est_c = st.selectbox("Estado Conservación", ["Óptimo", "Estable", "En Riesgo", "Crítico"])
+                    est_c = st.selectbox("Estado Conservación", estados_centro)
                     if st.form_submit_button("Guardar Centro"):
                         reg_nom = df_reg.loc[df_reg["codigo_region"] == reg_id, "nombre_oficial"].values[0]
                         with engine.begin() as conn:
@@ -238,7 +250,7 @@ elif modulo == "⚙️ Gestión CRUD":
             with t_editar:
                 with st.form("editar_centro"):
                     c_id = st.selectbox("Código Centro", df_centros["codigo_centro"])
-                    nuevo_est = st.selectbox("Nuevo Estado", ["Óptimo", "Estable", "En Riesgo", "Crítico"])
+                    nuevo_est = st.selectbox("Nuevo Estado", estados_centro)
                     nuevo_act = st.radio("Estado Lógico", [1, 0], format_func=lambda x: "Activo (1)" if x == 1 else "Inactivo (0)")
                     if st.form_submit_button("Actualizar Centro"):
                         with engine.begin() as conn:
@@ -249,6 +261,7 @@ elif modulo == "⚙️ Gestión CRUD":
                         st.rerun()
 
     else:
+        estados_especie = get_enum_values("especies", "estado_conservacion", ["Preocupación Menor", "Vulnerable", "En Peligro", "En Peligro Crítico"])
         df_esp_all = pd.read_sql(text("""
             SELECT codigo_especie, nombre_cientifico, nombre_comun, estado_conservacion, fecha_incorporacion, activo
             FROM especies ORDER BY codigo_especie DESC
@@ -261,7 +274,7 @@ elif modulo == "⚙️ Gestión CRUD":
                 with st.form("crear_especie"):
                     nc = st.text_input("Nombre Científico", value="Lontra felina")
                     ncom = st.text_input("Nombre Común", value="Chungungo")
-                    este = st.selectbox("Estado Conservación", ["Preocupación Menor", "Vulnerable", "En Peligro", "En Peligro Crítico"])
+                    este = st.selectbox("Estado Conservación", estados_especie)
                     if st.form_submit_button("Guardar Especie"):
                         with engine.begin() as conn:
                             conn.execute(text("""
@@ -273,7 +286,7 @@ elif modulo == "⚙️ Gestión CRUD":
             with t_ee:
                 with st.form("editar_especie"):
                     e_id = st.selectbox("Código Especie", df_esp_all["codigo_especie"])
-                    est_e2 = st.selectbox("Nuevo Estado", ["Preocupación Menor", "Vulnerable", "En Peligro", "En Peligro Crítico"])
+                    est_e2 = st.selectbox("Nuevo Estado", estados_especie)
                     act_e2 = st.radio("Estado Lógico", [1, 0], format_func=lambda x: "Activo (1)" if x == 1 else "Inactivo (0)")
                     if st.form_submit_button("Actualizar Especie"):
                         with engine.begin() as conn:
