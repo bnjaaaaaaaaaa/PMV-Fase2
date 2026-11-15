@@ -1,3 +1,4 @@
+SET NAMES utf8mb4;
 -- =========================================================================
 -- PROYECTO SEMESTRAL 2026 - TDFI103 BASES DE DATOS (FASE 2)
 -- CASO 3: SISTEMA INTEGRAL DE GESTIÓN DE CENTROS DE CONSERVACIÓN MARINA

@@ -46,11 +46,12 @@ if st.session_state.usuario_activo is None:
     with st.sidebar.expander("🔑 Ver usuarios disponibles en la BD"):
         try:
             df_demo = pd.read_sql(text("""
-                SELECT u.username, u.password, r.nombre_rol AS rol
+                SELECT u.username, u.password, GROUP_CONCAT(r.nombre_rol SEPARATOR ', ') AS rol
                 FROM usuarios u
                 JOIN usuarios_roles ur ON u.id_usuario = ur.id_usuario
                 JOIN roles r ON ur.id_rol = r.id_rol
                 WHERE u.activo = 1 AND u.estado_cuenta = 'Activa'
+                GROUP BY u.id_usuario, u.username, u.password
                 LIMIT 6
             """), engine)
             st.dataframe(df_demo, hide_index=True, use_container_width=True)
@@ -59,14 +60,14 @@ if st.session_state.usuario_activo is None:
 
     if submit_login:
         query = text("""
-            SELECT u.id_usuario, u.username, t.nombre, r.nombre_rol
+            SELECT u.id_usuario, u.username, t.nombre, GROUP_CONCAT(r.nombre_rol SEPARATOR ', ') AS nombre_rol
             FROM usuarios u
             JOIN trabajadores t ON u.id_trabajador = t.id_trabajador
             JOIN usuarios_roles ur ON u.id_usuario = ur.id_usuario
             JOIN roles r ON ur.id_rol = r.id_rol
             WHERE u.username = :u AND u.password = :p
               AND u.activo = 1 AND u.estado_cuenta = 'Activa'
-            LIMIT 1
+            GROUP BY u.id_usuario, u.username, t.nombre
         """)
         df_u = pd.read_sql(query, engine, params={"u": user_input, "p": pass_input})
         if not df_u.empty:
